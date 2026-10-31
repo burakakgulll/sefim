@@ -47,7 +47,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 #c2 svg{width:100%;height:100%;display:block}
 #c3{touch-action:none;cursor:grab}
 #c3 canvas{width:100%!important;height:100%!important;display:block}
-.filigran{position:absolute;inset:0;z-index:1;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:.07;user-select:none}
+.filigran{position:absolute;inset:0;z-index:1;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:.12;user-select:none}
 .filigran img{width:min(38%,260px);height:auto}
 .filigran span{font-weight:800;letter-spacing:.3em;font-size:.8rem;color:var(--ink)}
 .filigran .lb{display:none}
@@ -272,8 +272,16 @@ function kapaklar(){
       for(let j=0;j<k;j++) out.push({x:left+j*dw+2, w:dw-4, y:g.alt+2, h:g.gH-4, hinge:k===2?(j===0?"L":"R"):(i%2===0?"L":"R")});
     }
   } else {
-    const p=surguAdet(), pw=(g.Wm-2*T)/p+SURGU_BINDIRME, adim=(g.Wm-2*T-pw)/(p-1);
-    for(let j=0;j<p;j++) out.push({x:T+j*adim, w:pw, y:g.alt+T, h:g.Hi, front:j%2===1, adim, surgu:true});
+    const p=surguAdet(), B=SURGU_BINDIRME;
+    if(p===S.n){ // her kapak kendi bölmesini kapatır; birleşim (bindirme) ara dikmenin tam ortasına gelir, dikme görünmez
+      const orta=i=>T+i*(g.si+T)-T/2;
+      for(let j=0;j<p;j++){ const l=j===0?T:orta(j)-B/2, r=j===p-1?g.Wm-T:orta(j+1)+B/2;
+        out.push({x:l, w:r-l, y:g.alt+T, h:g.Hi, front:j%2===1, surgu:true}); }
+      out.forEach((d,j)=>{ d.adim = j ? d.x-out[j-1].x : 0; }); // ön kapak açılınca soldaki kapağın üstüne kayar
+    } else { // tek bölme: iki eşit kapak
+      const pw=(g.Wm-2*T)/p+B, adim=(g.Wm-2*T-pw)/(p-1);
+      for(let j=0;j<p;j++) out.push({x:T+j*adim, w:pw, y:g.alt+T, h:g.Hi, front:j%2===1, adim, surgu:true});
+    }
   }
   const N=out.length, k=S.ayna.kapsam;
   out.forEach((d,i)=>{ d.ayna = k==="tumu" || (k==="tek"&&i===Math.floor((N-1)/2)) || (k==="donusumlu"&&i%2===1) || (k==="sol"&&i===0) || (k==="sag"&&i===N-1); });
@@ -287,6 +295,8 @@ function cekPay(){ return S.door==="kapakli" ? T : 0; }
 function cekOnZ(){ return S.door==="surgu" ? -T-6-SURGU_D : S.door==="acik" ? -T : -T-6; }
 // Ray boyu: çekmece kutusu arkalığa en az 5 mm boşlukla sığmalı (50 mm adımlı standart raylar)
 function rayBoy(){ return Math.min(550, Math.max(250, Math.floor((G().Dc+cekOnZ()-5)/50)*50)); }
+// Sürgülüde ara dikmeler ray bölgesinin arkasında biter; sürgü kapaklar dikmelerin önünden geçer
+const araDer = () => G().Dc-(S.door==="surgu"?SURGU_D:0);
 const rafDer = () => G().Dc-20-(S.door==="surgu"?SURGU_D:0);
 
 /* ===== 2B çizim ===== */
@@ -437,7 +447,7 @@ function build3D(){
   const Dc=g.Dc;
   box(T,g.gH,Dc,0,g.alt,-Dc,gov); box(T,g.gH,Dc,g.Wm-T,g.alt,-Dc,gov);
   box(g.Wm-2*T,T,Dc,T,g.top-T,-Dc,gov); box(g.Wm-2*T,T,Dc,T,g.alt,-Dc,gov);
-  for(let i=1;i<n;i++) box(T,g.Hi,Dc,T+i*(si+T)-T,yb,-Dc,gov);
+  for(let i=1;i<n;i++) box(T,g.Hi,araDer(),T+i*(si+T)-T,yb,-Dc,gov);
   box(g.Wm-4,g.gH-4,ARKALIK,2,g.alt+2,-g.Dm,[ham,ham,ham,ham,beyazYuz,ham]);
   if(S.alt==="baza"){ // ön ve iki yan; arka açık
     box(g.Wm-2*T,g.alt,T,T,0,-T-BAZA_GERI,golge);
@@ -543,7 +553,7 @@ function liste(){
   add("Gövde","Yan dikme",2,g.gH,Dc,govde,g.gH);
   add("Gövde","Üst tabla",1,g.Wm-2*T,Dc,govde,g.Wm-2*T);
   add("Gövde","Alt tabla",1,g.Wm-2*T,Dc,govde,g.Wm-2*T);
-  add("Gövde","Ara dikme",n-1,g.Hi,Dc,govde,g.Hi);
+  add("Gövde","Ara dikme",n-1,g.Hi,araDer(),govde,g.Hi);
   // Arkalık gövdenin arkasına vidalanır. Levhanın kısa kenarını (PLAKA.h) aşarsa ek yeri bir ara dikmenin ortasına gelecek şekilde bölünür
   // En az parça sayısıyla, ek yerleri eşit bölmeye en yakın ara dikmelere gelir
   const ortalar=Array.from({length:n-1},(_,i)=>T+(i+1)*(si+T)-T/2), adet=ortalar.length?Math.min(n,Math.ceil((g.Wm-4)/PLAKA.h)):1;
@@ -598,7 +608,7 @@ function uyarilar(){
   if(g.si>1000) w.push(`Bölmeler ${(g.si/10).toFixed(0)} cm; bu genişlikte raflar zamanla eğilir. Bölme ekleyin.`);
   if(g.Wm-2*T>PLAKA.w) w.push(`Üst ve alt tabla ${S.W} cm ile tek levhadan çıkmaz; dolap iki gövde olarak üretilir.`);
   if(S.door==="surgu"){
-    const pw=(g.Wm-2*T)/surguAdet()+SURGU_BINDIRME;
+    const pw=Math.max(...kapaklar().map(d=>d.w));
     if(S.n===1) w.push(`Tek bölmede iki sürgü kapak bölmenin ancak yarısını açar. En az 2 bölme seçin.`);
     else if(pw>SURGU_MAX_PANEL) w.push(`Sürgü kapaklar ${(pw/10).toFixed(0)} cm genişliğinde; bu boyda kapak ağır olur. Bölme ekleyin.`);
   }
@@ -709,9 +719,9 @@ function adimCiz(){
       <select data-m="ilce" aria-label="İlçe"><option value="">İlçe seçin</option>${ILCELER.map(x=>`<option${m.ilce===x?" selected":""}>${x}</option>`).join("")}</select></div>
       <textarea data-m="not" placeholder="Not (ör. tavan eğimli, priz var)">${esc(m.not)}</textarea>
     </div>
-    <div class="actions"><button class="btn wa" id="waBtn" type="button">WhatsApp'tan gönder</button><a class="btn primary" id="sendBtn" href="#">E-postayla gönder</a></div>
+    <div class="actions"><button class="btn primary" id="sendBtn" type="button">Gönder</button></div>
     <div class="msg" id="msg"></div>
-    ${METRAJ_GOSTER?`<p class="note">Hesap varsayılan atölye kurallarıyla yapılır (${T} mm levha, ${BAZA} mm baza, ${ARKALIK} mm arkalık). Üretici kendi kurallarına göre düzeltir.</p>`:""}`;
+`;
   }
   $("#prevBtn").style.visibility=S.step===0?"hidden":"visible";
   $("#nextBtn").style.visibility=S.step===4?"hidden":"visible";
@@ -774,19 +784,26 @@ document.addEventListener("click",e=>{
   if(t.id==="doorToggle"){ S.showDoors=!S.showDoors; save(); if(S.view==="3d") cizimToggleOnly(); else cizim(); return; }
   if(t.id==="prevBtn"){ git(S.step-1); return; }
   if(t.id==="nextBtn"){ git(S.step+1); return; }
-  if(t.id==="sendBtn"){
-    const msg=$("#msg");
-    if(!S.musteri.ad.trim()||!telTam()){ e.preventDefault(); msg.className="msg err"; msg.textContent="Ad soyad ve telefon numaranızı eksiksiz girin."; return; }
-    t.href=`mailto:${URETICI_EPOSTA}?subject=${encodeURIComponent("Dolap teklif talebi – "+S.musteri.ad)}&body=${encodeURIComponent(metin())}`; t.target="_blank";
-    msg.className="msg good"; msg.textContent="E-posta uygulamanız açılıyor. Açılmazsa listeyi kopyalayıp gönderin."; return;
-  }
-  if(t.id==="waBtn"){
-    const msg=$("#msg");
-    if(!S.musteri.ad.trim()||!telTam()){ msg.className="msg err"; msg.textContent="Ad soyad ve telefon numaranızı eksiksiz girin."; return; }
-    window.open(FIRMA.waLink("Merhaba, sitenizde dolap tasarladım.\n\n"+metin(false)),"_blank","noopener");
-    msg.className="msg good"; msg.textContent="WhatsApp açılıyor; mesajı göndermeyi unutmayın."; return;
-  }
+  if(t.id==="sendBtn"){ gonder(t); return; }
 });
+// Teklif gönderimi: ayarlar.js'te web3formsKey varsa e-posta arka planda gider; yoksa e-posta uygulaması açılır
+async function gonder(btn){
+  const msg=$("#msg"), m=S.musteri;
+  if(!m.ad.trim()||!telTam()){ msg.className="msg err"; msg.textContent="Ad soyad ve telefon numaranızı eksiksiz girin."; return; }
+  const konu="Dolap teklif talebi – "+m.ad, govde=metin();
+  if(window.FIRMA&&FIRMA.web3formsKey){
+    btn.disabled=true; msg.className="msg"; msg.textContent="Gönderiliyor…";
+    try{
+      const r=await fetch("https://api.web3forms.com/submit",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},
+        body:JSON.stringify({access_key:FIRMA.web3formsKey,subject:konu,from_name:m.ad,message:govde})});
+      if(!(await r.json()).success) throw 0;
+      msg.className="msg good"; msg.textContent="Talebiniz bize ulaştı. En kısa sürede sizinle iletişime geçeceğiz.";
+    }catch(e){ msg.className="msg err"; msg.textContent="Gönderilemedi. Lütfen tekrar deneyin."; }
+    btn.disabled=false; return;
+  }
+  location.href=`mailto:${URETICI_EPOSTA}?subject=${encodeURIComponent(konu)}&body=${encodeURIComponent(govde)}`;
+  msg.className="msg good"; msg.textContent="E-posta uygulamanız açılıyor; açılan e-postayı gönderin.";
+}
 function cizimToggleOnly(){ kapakDugme(); }
 function kapakDugme(){
   const v3=S.view==="3d", acik=!S.showDoors;
