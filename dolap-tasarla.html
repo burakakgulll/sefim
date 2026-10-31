@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dolabını Tasarla | Şefim İnşaat</title>
+<meta name="description" content="Dolabınızı ölçünüze göre 3B tasarlayın: iç düzen, MDFlam ve suntalam kaplama seçin, teklif isteyin.">
+<link rel="icon" href="assets/ikon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="assets/ikon-180.png">
+<script src="assets/ayarlar.js"></script>
+<script src="assets/textures/katalog.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --bg:#ECEEF0; --surface:#FFFFFF; --ink:#1D2630; --muted:#5E6873; --line:#D3D8DD;
+  --tape:#F2B705; --tape-ink:#1D2630; --draw:#2A333C; --danger:#B3261E; --ok:#2E7D4F;
+  color-scheme: light; box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#15191E; --surface:#1F252C; --ink:#E8ECEF; --muted:#9AA4AE; --line:#333B44; --draw:#0E1216; --danger:#F2867E; --ok:#7FD1A0; color-scheme:dark; }
+}
+:root[data-theme="dark"]{ --bg:#15191E; --surface:#1F252C; --ink:#E8ECEF; --muted:#9AA4AE; --line:#333B44; --draw:#0E1216; --danger:#F2867E; --ok:#7FD1A0; color-scheme:dark; }
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--tape);outline-offset:2px}
+
+.app{display:grid;grid-template-columns:1fr;max-width:1320px;margin:0 auto}
+.stage{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:10px 14px 6px;border-bottom:1px solid var(--line)}
+.stage-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.brand{font-weight:800;font-size:1.05rem;letter-spacing:-.01em}
+.brand small{font-weight:500;color:var(--muted);font-size:.8rem;margin-left:6px}
+.tools{display:flex;gap:6px;align-items:center}
+.mini{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface)}
+.mini button{border:0;background:transparent;padding:6px 11px;font-size:.82rem;font-weight:700;cursor:pointer}
+.mini button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.toggle{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.toggle:disabled{opacity:.4;cursor:default}
+.canvas{height:40vh;min-height:230px;position:relative}
+#c2,#c3{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+#c2 svg{width:100%;height:100%;display:block}
+#c3{touch-action:none;cursor:grab}
+#c3 canvas{width:100%!important;height:100%!important;display:block}
+.filigran{position:absolute;inset:0;z-index:1;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:.07;user-select:none}
+.filigran img{width:min(38%,260px);height:auto}
+.filigran span{font-weight:800;letter-spacing:.3em;font-size:.8rem;color:var(--ink)}
+.filigran .lb{display:none}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .filigran .lk{display:none} :root:not([data-theme="light"]) .filigran .lb{display:block} }
+:root[data-theme="dark"] .filigran .lk{display:none} :root[data-theme="dark"] .filigran .lb{display:block}
+.c3hint{position:absolute;right:0;bottom:2px;font-size:.75rem;color:var(--muted);pointer-events:none}
+.hit{cursor:pointer}
+.doorfab{position:absolute;left:0;bottom:6px;z-index:3;display:inline-flex;align-items:center;gap:8px;background:var(--tape);color:var(--tape-ink);border:0;border-radius:999px;padding:11px 18px 11px 14px;font-weight:800;font-size:.95rem;box-shadow:0 2px 10px rgba(0,0,0,.28);cursor:pointer}
+.doorfab:disabled{display:none}
+.doorfab svg{width:20px;height:20px;flex:0 0 auto}
+.swarns{position:absolute;left:0;right:0;top:4px;z-index:2;display:flex;flex-direction:column;gap:4px;max-height:50%;overflow-y:auto}
+.swarns p{margin:0;background:var(--surface);border-left:4px solid var(--danger);padding:6px 10px;font-size:.8rem;line-height:1.3;border-radius:0 8px 8px 0;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.swarns b{color:var(--danger)}
+
+.panel{padding:14px 14px 28px}
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:16px}
+.steps button{border:0;background:transparent;padding:8px 2px 10px;border-bottom:3px solid var(--line);cursor:pointer;text-align:left;font-size:.74rem;color:var(--muted);font-weight:600;line-height:1.2}
+.steps button b{display:block;font-size:1.05rem;color:var(--ink)}
+.steps button[aria-current="step"]{border-color:var(--tape);color:var(--ink)}
+.steps button.done{border-color:var(--ink)}
+
+h2{font-size:1.35rem;margin:0 0 4px;letter-spacing:-.015em}
+h3{font-size:1rem;margin:20px 0 8px}
+.lead{color:var(--muted);margin:0 0 16px;font-size:.95rem;max-width:60ch}
+.field{margin-bottom:18px}
+.field-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.field label,.label{font-weight:600;font-size:.95rem}
+.label{display:block;margin-bottom:6px}
+.numwrap{display:flex;align-items:center;gap:6px}
+.numwrap input{width:76px;text-align:right;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-variant-numeric:tabular-nums;font-weight:600}
+.unit{color:var(--muted);font-size:.85rem}
+input[type=range]{width:100%;accent-color:var(--tape);height:28px}
+.hint{color:var(--muted);font-size:.82rem;margin-top:4px;max-width:60ch}
+
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.stepper button{width:44px;height:40px;border:0;background:transparent;font-size:1.3rem;cursor:pointer;font-weight:600}
+.stepper button:disabled{opacity:.3;cursor:default}
+.stepper output{min-width:44px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+.warn{border-left:4px solid var(--danger);background:var(--surface);padding:8px 12px;margin:0 0 10px;font-size:.88rem;border-radius:0 8px 8px 0}
+
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:600;font-size:.88rem;text-align:left;line-height:1.2}
+.chip span{display:block;font-weight:400;color:var(--muted);font-size:.78rem}
+.chip[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 -3px 0 var(--tape)}
+
+.options{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:16px}
+.opt{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px;cursor:pointer;text-align:center;font-size:.85rem;font-weight:600}
+.opt svg{display:block;margin:0 auto 6px;width:44px;height:58px}
+.opt[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.link{background:none;border:0;padding:0;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-size:.88rem}
+
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface);margin-bottom:16px}
+.seg button{flex:1;border:0;background:transparent;padding:10px 4px;cursor:pointer;font-weight:600;font-size:.86rem;line-height:1.2}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+
+.swatches{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.sw{border:0;background:none;cursor:pointer;padding:0;text-align:center;font-size:.76rem;width:62px}
+.sw i{display:block;width:54px;height:54px;border-radius:10px;margin:0 auto 4px;border:1px solid var(--line)}
+.sw[aria-pressed="true"] i{outline:3px solid var(--ink);outline-offset:2px}
+
+.kp{border:1px solid var(--line);border-radius:12px;background:var(--surface);margin-bottom:18px;overflow:hidden}
+.kp-secili{display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.kp-secili img{width:52px;height:52px;border-radius:8px;object-fit:cover;border:1px solid var(--line)}
+.kp-secili b{display:block}
+.kp-secili span{font-size:.8rem;color:var(--muted)}
+.kp-ara{display:flex;gap:8px;padding:10px 12px 0}
+.kp-ara input{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.kp-kat{display:flex;gap:6px;overflow-x:auto;padding:8px 12px}
+.kp-kat button{flex:0 0 auto;border:1px solid var(--line);background:transparent;border-radius:999px;padding:5px 11px;font-size:.8rem;font-weight:700;cursor:pointer}
+.kp-kat button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.kp-izgara{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px;padding:4px 12px 12px;max-height:300px;overflow-y:auto}
+.kp-izgara button{border:0;background:none;padding:0;cursor:pointer;font-size:.72rem;line-height:1.2;text-align:center;color:var(--ink)}
+.kp-izgara img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block;margin-bottom:4px;background:var(--bg)}
+.kp-izgara button[aria-pressed="true"] img{outline:3px solid var(--tape);outline-offset:1px}
+.kp-bos{grid-column:1/-1;color:var(--muted);font-size:.85rem;padding:8px 0}
+.geri{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:inherit}
+.geri img{height:30px;width:auto}
+.geri .lb{display:none}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .geri .lk{display:none} :root:not([data-theme="light"]) .geri .lb{display:block} }
+:root[data-theme="dark"] .geri .lk{display:none} :root[data-theme="dark"] .geri .lb{display:block}
+.btn.wa{background:#1FAF54;border-color:#1FAF54;color:#fff}
+
+.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px}
+.summary div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px}
+.summary b{display:block;font-size:1.15rem;font-variant-numeric:tabular-nums}
+.summary span{font-size:.8rem;color:var(--muted)}
+.tbl-wrap{overflow-x:auto;margin-bottom:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.85rem;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:600;color:var(--muted);font-size:.78rem}
+tr.grp td{font-weight:700;background:var(--bg)}
+td.num{text-align:right}
+.form{display:grid;gap:10px;margin-bottom:14px}
+.form input,.form textarea,.form select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.form select:disabled{opacity:1;color:var(--muted)}
+.form .iki{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form textarea{min-height:70px;resize:vertical}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;border-radius:10px;padding:12px 18px;font-weight:700;cursor:pointer;text-decoration:none;border:1px solid var(--ink);background:var(--surface);color:var(--ink)}
+.btn.primary{background:var(--tape);color:var(--tape-ink);border-color:var(--tape)}
+.nav{display:flex;justify-content:space-between;margin-top:22px;gap:8px}
+.msg{font-size:.88rem;margin-top:8px;min-height:1.2em}
+.msg.err{color:var(--danger)}.msg.good{color:var(--ok)}
+.note{font-size:.8rem;color:var(--muted);margin-top:14px;max-width:62ch}
+
+@media (max-width:420px){ .brand small{display:none} }
+@media (min-width:900px){
+  .app{grid-template-columns:minmax(0,1.3fr) minmax(370px,1fr);min-height:100vh}
+  .stage{height:calc(100vh - env(safe-area-inset-top,0px));border-bottom:0;border-right:1px solid var(--line);padding:20px 24px;display:flex;flex-direction:column}
+  .canvas{flex:1;height:auto}
+  .panel{padding:24px 28px 40px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="stage" aria-label="Dolap önizleme">
+    <div class="stage-head">
+      <a class="geri" href="index.html" aria-label="Ana sayfaya dön"><img class="lk" src="assets/logo-koyu.png" alt="Şefim İnşaat"><img class="lb" src="assets/logo-beyaz.png" alt=""><span class="brand">Dolabını Tasarla<small id="dimtxt"></small></span></a>
+      <div class="tools">
+        <div class="mini" role="group" aria-label="Görünüm"><button type="button" data-view="2d">2B</button><button type="button" data-view="3d">3B</button></div>
+      </div>
+    </div>
+    <div class="canvas">
+      <div class="swarns" id="sw" role="status" aria-live="polite"></div>
+      <button class="doorfab" id="doorToggle" type="button"></button>
+      <div id="c2"></div>
+      <div id="c3"><span class="c3hint">Sürükleyerek döndürün</span></div>
+      <div class="filigran" aria-hidden="true"><img class="lk" src="assets/logo-koyu.png" alt=""><img class="lb" src="assets/logo-beyaz.png" alt=""><span>sefiminsaat</span></div>
+    </div>
+  </section>
+  <section class="panel">
+    <nav class="steps" id="steps" aria-label="Adımlar"></nav>
+    <div id="stepBody"></div>
+    <div class="nav">
+      <button class="btn" id="prevBtn" type="button">Geri</button>
+      <button class="btn primary" id="nextBtn" type="button">İleri</button>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ===== Üretici kuralları: atölyeye göre buradan değiştirin ===== */
+const URETICI_EPOSTA = (window.FIRMA&&FIRMA.eposta) || "teklif@ornek.com";
+const METRAJ_GOSTER = true; // false: malzeme listesi müşteriye gösterilmez, yalnızca teklif e-postasında gider
+const T = 18;          // gövde ve kapak levha kalınlığı (mm)
+const BAZA = 80;       // kapalı baza yüksekliği (mm)
+const AYAK = 100;      // görünür ayak yüksekliği (mm)
+const BAZA_GERI = 30;  // baza önünün gövde önünden içeride kaldığı pay (mm)
+const ARKALIK = 3;     // arkalık kalınlığı (mm); gövdenin arkasına vidalanır, iç yüzü beyaz
+const CEK_TABAN = 5;   // çekmece tabanı kalınlığı (mm), beyaz
+const SURGU_D = 80;    // sürgü ray profilinin gövde içinde kapladığı derinlik (mm)
+const CEKMECE_H = 200; // bir çekmece modül yüksekliği (mm)
+const AYNA_KALINLIK = 4;
+const CERCEVE_PAY = 80; // çerçeveli aynada kapak kenarından boşluk (mm)
+const PLAKA = {w:2800, h:2100};
+const DOKU_BOY = PLAKA.w; // kaplama görselinin damar yönündeki gerçek boyu (mm): görsel bir levha boyunu kaplar, parçalarda tekrar/ek izi oluşmaz
+const FIRE = 1.15;
+/* ================================================================ */
+
+// Kaplamalar assets/textures/katalog.js dosyasından gelir (scripts/dokulari-hazirla.py üretir)
+const KAPLAMALAR = (window.KAPLAMALAR&&window.KAPLAMALAR.length) ? window.KAPLAMALAR : [{id:"beyaz",ad:"Beyaz",kat:"Düz renk",hex:"#f1f0ec",en:1}];
+const RENKLER = Object.fromEntries(KAPLAMALAR.map(k=>[k.id,k]));
+const kaplama = id => RENKLER[id] || RENKLER.beyaz || KAPLAMALAR[0];
+const dokuYol = id => `assets/textures/${id}.jpg`, kucukYol = id => `assets/textures/k/${id}.jpg`;
+const KAP_KAT = ["Tümü",...[...new Set(KAPLAMALAR.map(k=>k.kat))]];
+const GOVDE_MALZ = {suntalam:"Suntalam", mdflam:"MDFlam"};
+const KAPAK_MALZ = {suntalam:"Suntalam", mdflam:"MDFlam"};
+const KAPAK_MALZ_UZUN = {suntalam:"Suntalam", mdflam:"MDFlam"};
+const KP = {color:{ara:"",kat:"Tümü"}, kcolor:{ara:"",kat:"Tümü"}}; // kaplama seçici filtreleri (kaydedilmez)
+const TIPLER = { aski:"Askı + üst raf", uzun:"Uzun askı", raf:"Raflı", cekmece:"Çekmece + raf", karma:"Askı + çekmece" };
+const KAPAK = {kapakli:"Kapaklı", surgu:"Sürgülü", acik:"Kapaksız"};
+const KULP = {cubuk:"Çubuk", dugme:"Düğme", gomme:"Kulpsuz"};
+const KULP_UZUN = {cubuk:"Çubuk kulp", dugme:"Düğme kulp", gomme:"Bas-aç (kulpsuz)"};
+const AYNALAR = { gumus:{ad:"Gümüş",hex:"#C9D2D8"}, bronz:{ad:"Bronz",hex:"#B08F6C"}, fume:{ad:"Füme",hex:"#5E646A"}, buzlu:{ad:"Buzlu",hex:"#E4E8EB"} };
+const AYNA_KAPSAM = {yok:"Yok", tek:"Tek kapak", donusumlu:"Dönüşümlü", sol:"Sol", sag:"Sağ", tumu:"Tümü"};
+const SURGU_MAX_PANEL = 1200; // tek sürgü panelinin önerilen en büyük genişliği (mm); aşılırsa uyarı çıkar
+const SURGU_BINDIRME = 40;    // sürgü panellerinin birbirinin üzerine binme payı (mm)
+// Her bölmeye bir sürgü kapak: kapak birleşimleri ara dikmelere denk gelir, her bölme tam açılabilir
+const surguAdet = () => Math.max(2, S.n);
+const aynaSecenek = () => Object.fromEntries(["yok","tek","donusumlu","tumu"].map(k=>[k,AYNA_KAPSAM[k]]));
+function aynaUyumla(){ if(!(S.ayna.kapsam in aynaSecenek())) S.ayna.kapsam = (S.ayna.kapsam==="sol"||S.ayna.kapsam==="sag") ? "tek" : "yok"; }
+const AYNA_SEKIL = {tam:"Tam yüzey", cerceve:"Çerçeveli"};
+const ADIMLAR = ["Ölçü","İç düzen","Gövde","Kapak","Teklif"];
+const IL = (window.FIRMA&&FIRMA.il) || "Samsun";
+const ILCELER = (window.FIRMA&&FIRMA.ilceler) || [];
+
+function sec(type){return {type, raf: type==="cekmece"?2:4, cek:3}}
+// İlk açılış: 5 kapaklı, ortası aynalı, sahra meşe kapak + beyaz gövde
+const varsayilan = () => ({W:250,H:260,D:60,n:5,sections:[sec("uzun"),sec("aski"),{type:"cekmece",raf:3,cek:3},sec("aski"),sec("raf")],
+  alt:"baza", ustOn:true, ustH:10, govdeMalz:"suntalam", color:"beyaz",
+  door:"kapakli", kapakMalz:"mdflam", kColor:RENKLER["sahra-mese"]?"sahra-mese":"beyaz", handle:"cubuk",
+  ayna:{kapsam:"tek",tip:"gumus",sekil:"tam"},
+  showDoors:true, view:"3d", sel:0, step:0, musteri:{ad:"",tel:"",mail:"",ilce:"",not:""}});
+
+let S;
+try{ const raw=localStorage.getItem("dolap-v4"); const v=varsayilan(); S = raw ? Object.assign(v, JSON.parse(raw)) : v; S.ayna=Object.assign(varsayilan().ayna,S.ayna||{}); }catch(e){ S=varsayilan(); }
+function save(){ try{ localStorage.setItem("dolap-v4", JSON.stringify(S)); }catch(e){} }
+
+const $ = s => document.querySelector(s);
+const r0 = x => Math.round(x);
+function G(){
+  const Wm=S.W*10, Hm=S.H*10, Dm=S.D*10, alt=S.alt==="ayak"?AYAK:BAZA, ust=S.ustOn?S.ustH*10:0;
+  const gH=Hm-alt-ust, Hi=gH-2*T, si=(Wm-2*T-(S.n-1)*T)/S.n;
+  return {Wm,Hm,Dm,Dc:Dm-ARKALIK,alt,ust,gH,Hi,si,top:Hm-ust}; // Dc: arkalık hariç gövde derinliği
+}
+function duzen(s,Hi){
+  if(s.type==="aski")  return {raflar:[Hi-350], cubuklar:[Hi-420], cek:0};
+  if(s.type==="uzun")  return {raflar:[], cubuklar:[Hi-80], cek:0};
+  if(s.type==="raf"){ const k=s.raf; return {raflar:Array.from({length:k},(_,i)=>(i+1)*Hi/(k+1)), cubuklar:[], cek:0}; }
+  if(s.type==="cekmece"){ const d=s.cek, b=d*CEKMECE_H, k=s.raf; return {raflar:[b,...Array.from({length:k},(_,i)=>b+(i+1)*(Hi-b)/(k+1))], cubuklar:[], cek:d}; }
+  return {raflar:[2*CEKMECE_H, Hi-350], cubuklar:[Hi-420], cek:2};
+}
+function kapaklar(){
+  const g=G(), out=[]; if(S.door==="acik") return out;
+  if(S.door==="kapakli"){
+    for(let i=0;i<S.n;i++){
+      const x0=T+i*(g.si+T), left=i?x0-T/2:0, right=i===S.n-1?g.Wm:x0+g.si+T/2, k=g.si>600?2:1, dw=(right-left)/k;
+      for(let j=0;j<k;j++) out.push({x:left+j*dw+2, w:dw-4, y:g.alt+2, h:g.gH-4, hinge:k===2?(j===0?"L":"R"):(i%2===0?"L":"R")});
+    }
+  } else {
+    const p=surguAdet(), pw=(g.Wm-2*T)/p+SURGU_BINDIRME, adim=(g.Wm-2*T-pw)/(p-1);
+    for(let j=0;j<p;j++) out.push({x:T+j*adim, w:pw, y:g.alt+T, h:g.Hi, front:j%2===1, adim, surgu:true});
+  }
+  const N=out.length, k=S.ayna.kapsam;
+  out.forEach((d,i)=>{ d.ayna = k==="tumu" || (k==="tek"&&i===Math.floor((N-1)/2)) || (k==="donusumlu"&&i%2===1) || (k==="sol"&&i===0) || (k==="sag"&&i===N-1); });
+  return out;
+}
+function aynaRect(d){ const m = S.ayna.sekil==="cerceve" ? CERCEVE_PAY : (d.surgu?16:2); return {x:d.x+m, y:d.y+m, w:d.w-2*m, h:d.h-2*m}; }
+function mix(hex,to,a){ const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)); const c=p(hex),t=p(to); return "#"+c.map((v,i)=>Math.round(v+(t[i]-v)*a).toString(16).padStart(2,"0")).join(""); }
+// Menteşeli kapak arkasındaki çekmeceler, açık kapağa çarpmasın diye iki yandan dolgu ile daraltılır
+function cekPay(){ return S.door==="kapakli" ? T : 0; }
+// Çekmece ön yüzünün z konumu (gövde önü = 0): kapaklıda kapak arkasında, sürgülüde ray profilinin arkasında
+function cekOnZ(){ return S.door==="surgu" ? -T-6-SURGU_D : S.door==="acik" ? -T : -T-6; }
+// Ray boyu: çekmece kutusu arkalığa en az 5 mm boşlukla sığmalı (50 mm adımlı standart raylar)
+function rayBoy(){ return Math.min(550, Math.max(250, Math.floor((G().Dc+cekOnZ()-5)/50)*50)); }
+const rafDer = () => G().Dc-20-(S.door==="surgu"?SURGU_D:0);
+
+/* ===== 2B çizim ===== */
+function cizim2B(){
+  const g=G(), {Wm,Hm}=g, n=S.n, si=g.si, Y=y=>Hm-y;
+  const gk=kaplama(S.color), kk=kaplama(S.kColor), col="url(#t-g)", kcol="url(#t-k)", koyu=mix(gk.hex,"#000000",.32), kkoyu=mix(kk.hex,"#000000",.35);
+  const L=Math.max(Wm,Hm), fs=L*0.034, pad=L*0.1, yb=g.alt+T;
+  const st='stroke="var(--draw)" stroke-width="1.2" vector-effect="non-scaling-stroke"';
+  let defs="<defs>";
+  [["t-g",gk],["t-k",kk]].forEach(([id,k])=>{ const h=DOKU_BOY, w=DOKU_BOY*(k.en||1); defs+=`<pattern id="${id}" patternUnits="userSpaceOnUse" width="${w}" height="${h}"><rect width="${w}" height="${h}" fill="${k.hex}"/><image href="${dokuYol(k.id)}" width="${w}" height="${h}" preserveAspectRatio="none"/></pattern>`; });
+  Object.keys(AYNALAR).forEach(k=>{ const h=AYNALAR[k].hex; defs+=`<linearGradient id="m-${k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${mix(h,"#ffffff",.5)}"/><stop offset=".45" stop-color="${h}"/><stop offset=".55" stop-color="${mix(h,"#ffffff",.3)}"/><stop offset="1" stop-color="${mix(h,"#000000",.2)}"/></linearGradient>`; });
+  defs+="</defs>";
+  let o=defs;
+  o+=`<rect x="0" y="${Y(g.top)}" width="${Wm}" height="${g.gH}" fill="${col}" ${st}/>`;
+  if(S.alt==="baza") o+=`<rect x="0" y="${Y(g.alt)}" width="${T}" height="${g.alt}" fill="${koyu}" ${st}/><rect x="${Wm-T}" y="${Y(g.alt)}" width="${T}" height="${g.alt}" fill="${koyu}" ${st}/><rect x="${T}" y="${Y(g.alt)}" width="${Wm-2*T}" height="${g.alt}" fill="${koyu}" ${st}/>`;
+  else for(let i=0;i<=n;i++){ const x=i===0?30:i===n?Wm-60:T+i*(si+T)-T/2-15; o+=`<rect x="${x}" y="${Y(g.alt)}" width="30" height="${g.alt}" rx="6" fill="#8D949B" ${st}/>`; }
+  if(g.ust) o+=`<rect x="0" y="0" width="${Wm}" height="${g.ust}" fill="${S.door==="acik"?col:kcol}" ${st}/>`;
+  for(let i=0;i<n;i++){
+    const x0=T+i*(si+T), d=duzen(S.sections[i],g.Hi);
+    o+=`<rect x="${x0}" y="${Y(g.top-T)}" width="${si}" height="${g.Hi}" fill="${col}" ${st}/><rect x="${x0}" y="${Y(g.top-T)}" width="${si}" height="${g.Hi}" fill="#000" fill-opacity=".14"/>`;
+    for(let j=0;j<d.cek;j++){ const y=Y(yb+(j+1)*CEKMECE_H-3); o+=`<rect x="${x0+4+cekPay()}" y="${y}" width="${si-8-2*cekPay()}" height="${CEKMECE_H-6}" fill="${col}" ${st}/><rect x="${x0+si/2-60}" y="${y+CEKMECE_H/2-10}" width="120" height="14" rx="7" fill="${koyu}"/>`; }
+    d.raflar.forEach(p=>{ o+=`<rect x="${x0}" y="${Y(yb+p+T)}" width="${si}" height="${T}" fill="${col}" ${st}/>`; });
+    d.cubuklar.forEach(p=>{
+      const alt=Math.max(0,...d.raflar.filter(r=>r<p), d.cek*CEKMECE_H), boy=Math.min(1000,p-alt-60), adet=Math.max(2,Math.floor(si/110));
+      for(let k=0;k<adet;k++){ const cx=x0+(si/(adet+1))*(k+1), w=Math.min(90,si/(adet+1)*.8);
+        o+=`<path d="M${cx} ${Y(yb+p)} l${-w/2} 60 h${w} z" fill="none" stroke="var(--draw)" stroke-opacity=".35" stroke-width="1" vector-effect="non-scaling-stroke"/><rect x="${cx-w/2}" y="${Y(yb+p)+60}" width="${w}" height="${Math.max(0,boy-60)}" rx="10" fill="var(--draw)" fill-opacity=".12"/>`; }
+      o+=`<rect x="${x0+15}" y="${Y(yb+p)-12}" width="${si-30}" height="24" rx="12" fill="#9AA1A8" ${st}/>`;
+    });
+  }
+  for(let i=1;i<n;i++) o+=`<rect x="${T+i*(si+T)-T}" y="${Y(g.top-T)}" width="${T}" height="${g.Hi}" fill="${col}" ${st}/>`;
+  if(S.showDoors){
+    const ks=kapaklar();
+    if(S.door==="surgu") o+=`<rect x="${T}" y="${Y(g.top-T)}" width="${Wm-2*T}" height="16" fill="#9AA1A8"/>`;
+    ks.forEach((d,i)=>{
+      o+=`<rect x="${d.x}" y="${Y(d.y+d.h)}" width="${d.w}" height="${d.h}" fill="${kcol}" ${st}/>`;
+      if(d.surgu && !d.front) o+=`<rect x="${d.x}" y="${Y(d.y+d.h)}" width="${d.w}" height="${d.h}" fill="#000" fill-opacity=".06"/>`;
+      if(d.ayna){ const a=aynaRect(d); o+=`<rect x="${a.x}" y="${Y(a.y+a.h)}" width="${a.w}" height="${a.h}" fill="url(#m-${S.ayna.tip})" ${st}/>`; }
+      if(d.surgu){ o+=`<rect x="${d.x}" y="${Y(d.y+d.h)}" width="14" height="${d.h}" fill="#9AA1A8"/><rect x="${d.x+d.w-14}" y="${Y(d.y+d.h)}" width="14" height="${d.h}" fill="#9AA1A8"/>`; return; }
+      const sag=d.hinge==="L", hx=sag?d.x+d.w-60:d.x+60, hy=Y(d.y+d.h*0.55);
+      if(S.handle==="cubuk") o+=`<rect x="${hx-8}" y="${hy-180}" width="16" height="360" rx="8" fill="${kkoyu}"/>`;
+      if(S.handle==="dugme") o+=`<circle cx="${hx}" cy="${hy}" r="20" fill="${kkoyu}"/>`;
+      if(S.handle==="gomme") o+=`<rect x="${sag?d.x+d.w-6:d.x}" y="${Y(d.y+d.h)}" width="6" height="${d.h}" fill="${kkoyu}" opacity=".45"/>`;
+    });
+  }
+  for(let i=0;i<n;i++){ const x0=T+i*(si+T);
+    if(S.step===1&&i===S.sel) o+=`<rect x="${x0-8}" y="${Y(g.top-T)-8}" width="${si+16}" height="${g.Hi+16}" fill="none" stroke="var(--tape)" stroke-width="4" vector-effect="non-scaling-stroke"/>`;
+    o+=`<rect class="hit" data-i="${i}" x="${x0-T/2}" y="${Y(g.top)}" width="${si+T}" height="${g.gH}" fill="transparent"><title>${i+1}. bölme</title></rect>`; }
+  const ty=-pad*.75, th=fs*1.5, tx=-pad*.75, lbl=(x,y,t,rot)=>`<text ${rot?`transform="translate(${x} ${y}) rotate(-90)"`:`x="${x}" y="${y}"`} text-anchor="middle" font-size="${fs}" font-weight="700" fill="var(--tape-ink)" style="paint-order:stroke" stroke="var(--tape)" stroke-width="${fs*.5}">${t}</text>`;
+  o+=`<rect x="0" y="${ty}" width="${Wm}" height="${th}" fill="var(--tape)"/>`;
+  for(let x=0;x<=Wm;x+=100) o+=`<line x1="${x}" y1="${ty}" x2="${x}" y2="${ty+(x%500===0?th*.45:th*.25)}" stroke="var(--tape-ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  o+=lbl(Wm/2,ty+th*.78,`${S.W} cm`);
+  o+=`<rect x="${tx}" y="0" width="${th}" height="${Hm}" fill="var(--tape)"/>`;
+  for(let y=0;y<=Hm;y+=100) o+=`<line x1="${tx+th}" y1="${Hm-y}" x2="${tx+th-(y%500===0?th*.45:th*.25)}" y2="${Hm-y}" stroke="var(--tape-ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  o+=lbl(tx+th*.72,Hm/2,`${S.H} cm`,1);
+  o+=`<text x="${Wm/2}" y="${Hm+fs*1.6}" text-anchor="middle" font-size="${fs*.8}" fill="var(--muted)">Derinlik ${S.D} cm</text>`;
+  $("#c2").innerHTML=`<svg viewBox="${-pad} ${-pad} ${Wm+pad*1.25} ${Hm+pad+fs*2}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Dolap ön görünüş çizimi">${o}</svg>`;
+  $("#c2").querySelectorAll(".hit").forEach(el=>el.addEventListener("click",()=>bolmeSec(+el.dataset.i)));
+}
+function bolmeSec(i){ S.sel=i; if(S.step!==1){ S.step=1; S.showDoors=false; } guncelle(true); }
+
+/* ===== 3B ===== */
+const V3={doors:[],slides:[],drawers:[],a:0,yaw:-0.5,pitch:0.14,zoom:1,dirty:true,raf:0};
+const azHareket = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function init3D(){
+  if(V3.ok!==undefined) return V3.ok;
+  if(!window.THREE){ V3.ok=false; return false; }
+  try{ V3.renderer=new THREE.WebGLRenderer({antialias:true,alpha:true}); }catch(e){ V3.ok=false; return false; }
+  const r=V3.renderer, el=$("#c3"); r.setPixelRatio(Math.min(2,window.devicePixelRatio||1)); el.appendChild(r.domElement);
+  V3.scene=new THREE.Scene(); V3.camera=new THREE.PerspectiveCamera(35,1,0.05,60);
+  V3.scene.add(new THREE.HemisphereLight(0xffffff,0x8a9096,0.55));
+  const dl=new THREE.DirectionalLight(0xffffff,0.6); dl.position.set(2.5,4,4); V3.scene.add(dl);
+  const fl=new THREE.DirectionalLight(0xffffff,0.25); fl.position.set(-3,2,2); V3.scene.add(fl);
+  V3.root=new THREE.Group(); V3.scene.add(V3.root);
+  V3.a = S.showDoors?0:1;
+  const pts=new Map(); let pinch=0;
+  el.addEventListener("pointerdown",e=>{ el.setPointerCapture(e.pointerId); pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); el.style.cursor="grabbing"; });
+  el.addEventListener("pointermove",e=>{
+    if(!pts.has(e.pointerId)) return; const p=pts.get(e.pointerId), dx=e.clientX-p.x, dy=e.clientY-p.y;
+    pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pts.size===1){ V3.yaw-=dx*0.008; V3.pitch=Math.min(1.1,Math.max(-0.05,V3.pitch+dy*0.006)); }
+    else if(pts.size===2){ const [a,b]=[...pts.values()], d=Math.hypot(a.x-b.x,a.y-b.y); if(pinch) V3.zoom=Math.min(2.5,Math.max(0.45,V3.zoom*pinch/d)); pinch=d; }
+    V3.dirty=true;
+  });
+  const up=e=>{ pts.delete(e.pointerId); if(pts.size<2) pinch=0; el.style.cursor="grab"; };
+  el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
+  el.addEventListener("wheel",e=>{ e.preventDefault(); V3.zoom=Math.min(2.5,Math.max(0.45,V3.zoom*(1+e.deltaY*0.001))); V3.dirty=true; },{passive:false});
+  new ResizeObserver(resize3D).observe(el);
+  V3.ok=true; return true;
+}
+function resize3D(){ const el=$("#c3"), w=el.clientWidth, h=el.clientHeight; if(!w||!h||!V3.renderer) return; V3.renderer.setSize(w,h,false); V3.camera.aspect=w/h; V3.camera.updateProjectionMatrix(); V3.dirty=true; }
+function camPos(){
+  const g=G(), c=V3.camera, tgt=new THREE.Vector3(0,g.Hm/2000,-g.Dm/2000);
+  const half=Math.max(g.Hm/2, g.Wm/2/c.aspect)/1000, dist=half/Math.tan(17.5*Math.PI/180)*1.2*V3.zoom + g.Dm/1000;
+  c.position.set(tgt.x+dist*Math.sin(V3.yaw)*Math.cos(V3.pitch), tgt.y+dist*Math.sin(V3.pitch), tgt.z+dist*Math.cos(V3.yaw)*Math.cos(V3.pitch));
+  c.lookAt(tgt);
+}
+const MC={};
+function canvasTex(w,h,f){ const c=document.createElement("canvas"); c.width=w; c.height=h; f(c.getContext("2d"),w,h); return new THREE.CanvasTexture(c); }
+// Kaplama görseli yüklenene kadar ortalama rengiyle çizilir, sonra doku yerleşir
+function lamMat(key){
+  const c=kaplama(key), k="lam|"+c.id; if(MC[k]) return MC[k];
+  const m=MC[k]=new THREE.MeshStandardMaterial({color:c.hex,roughness:c.kat==="Metalik"?.45:.78,metalness:c.kat==="Metalik"?.15:0});
+  new THREE.TextureLoader().load(dokuYol(c.id),tex=>{
+    tex.wrapS=tex.wrapT=THREE.MirroredRepeatWrapping; tex.anisotropy=Math.min(8,V3.renderer.capabilities.getMaxAnisotropy());
+    [m,...(V3.fade||[]).filter(f=>f.userData.kaynak===m)].forEach(x=>{ x.map=tex; x.color.set("#ffffff"); x.needsUpdate=true; }); V3.dirty=true;
+  });
+  return m;
+}
+// Kutu yüzeylerine gerçek ölçekte UV verir. Damar her yüzün uzun kenarı boyunca akar; görsel bir levha boyunu (DOKU_BOY)
+// kapladığı ve her yüz görselin kenarından başladığı için parçanın ortasında ek/tekrar izi oluşmaz.
+// ofs (0–1): her parçanın görselin farklı bir şeridinden kesilmiş gibi görünmesi için yatay kaydırma
+function dokuUV(geo,w,h,d,en,ofs){
+  const uv=geo.attributes.uv, pos=geo.attributes.position, nor=geo.attributes.normal, tv=DOKU_BOY/1000, tu=tv*(en||1);
+  for(let i=0;i<uv.count;i++){
+    const x=pos.getX(i)+w/2, y=pos.getY(i)+h/2, z=pos.getZ(i)+d/2, ax=Math.abs(nor.getX(i)), ay=Math.abs(nor.getY(i));
+    let a,b,la,lb; // a, b: yüzeyin iki ekseni boyunca kenardan uzaklık (m); la, lb: yüzey boyutları
+    if(ax>.5){ a=z; b=y; la=d; lb=h; } else if(ay>.5){ a=x; b=z; la=w; lb=d; } else { a=x; b=y; la=w; lb=h; }
+    const [enine,boyuna,enBoy]= lb>=la ? [a,b,la] : [b,a,lb];
+    uv.setXY(i, Math.max(0,1-enBoy/tu)*ofs + enine/tu, boyuna/tv);
+  }
+  uv.needsUpdate=true;
+}
+function aynaMat(tip){
+  const k="ayna|"+tip; if(MC[k]) return MC[k]; const hex=AYNALAR[tip].hex, buz=tip==="buzlu";
+  const tex=canvasTex(128,256,(x,w,h)=>{ const gr=x.createLinearGradient(0,0,w,h); gr.addColorStop(0,mix(hex,"#ffffff",buz?.2:.45)); gr.addColorStop(1,mix(hex,"#000000",buz?.05:.25)); x.fillStyle=gr; x.fillRect(0,0,w,h);
+    if(!buz){ x.fillStyle="rgba(255,255,255,.28)"; x.beginPath(); x.moveTo(w*.15,0); x.lineTo(w*.45,0); x.lineTo(-w*.1,h*.55); x.lineTo(-w*.4,h*.55); x.fill(); x.fillStyle="rgba(255,255,255,.14)"; x.beginPath(); x.moveTo(w*.9,h*.3); x.lineTo(w*1.05,h*.3); x.lineTo(w*.4,h); x.lineTo(w*.25,h); x.fill(); } });
+  return MC[k]=new THREE.MeshStandardMaterial({map:tex,roughness:buz?.95:.12,metalness:0});
+}
+const basitMat=(k,o)=>MC[k]||(MC[k]=new THREE.MeshStandardMaterial(o));
+function build3D(){
+  const g=G(), R=V3.root, ox=-g.Wm/2, n=S.n, si=g.si, yb=g.alt+T;
+  R.traverse(o=>{ if(o.geometry) o.geometry.dispose(); }); while(R.children.length) R.remove(R.children[0]);
+  (V3.fade||[]).forEach(m=>m.dispose());
+  V3.doors=[]; V3.slides=[]; V3.drawers=[]; V3.fade=[];
+  const fm=m=>{ const c=m.clone(); c.transparent=true; c.userData={kaynak:m}; V3.fade.push(c); return c; };
+  const gov=lamMat(S.color), kap=lamMat(S.kColor), beyaz=lamMat("beyaz");
+  // 3 mm arkalık ve 5 mm çekmece tabanı: bir yüzü beyaz, diğer yüzü ve kenarları ham levha
+  const ham=basitMat("ham",{color:"#9C7B5B",roughness:.95}), beyazYuz=basitMat("beyazYuz",{color:"#F1F0EC",roughness:.8});
+  let tohum=1; const ofs=()=>{ tohum=(tohum*9301+49297)%233280; return tohum/233280; };
+  const metal=basitMat("metal",{color:"#A7ADB3",metalness:.6,roughness:.35});
+  const golge=basitMat("dk"+S.color,{color:mix(kaplama(S.color).hex,"#000000",.35),roughness:.9});
+  const enOf=new Map([[gov,kaplama(S.color).en],[kap,kaplama(S.kColor).en],[beyaz,kaplama("beyaz").en]]);
+  const box=(w,h,d,x,y,z,m,par)=>{ const geo=new THREE.BoxGeometry(w/1000,h/1000,d/1000), mm=m.userData&&m.userData.kaynak||m;
+    if(enOf.has(mm)) dokuUV(geo,w/1000,h/1000,d/1000,enOf.get(mm),ofs());
+    const me=new THREE.Mesh(geo,m); me.position.set((x+w/2)/1000+(par?0:ox/1000),(y+h/2)/1000,(z+d/2)/1000); (par||R).add(me); return me; };
+  // gövde
+  // gövde derinliği Dc; arkalık (ARKALIK) gövdenin arkasına vidalanır, toplam derinlik Dm
+  const Dc=g.Dc;
+  box(T,g.gH,Dc,0,g.alt,-Dc,gov); box(T,g.gH,Dc,g.Wm-T,g.alt,-Dc,gov);
+  box(g.Wm-2*T,T,Dc,T,g.top-T,-Dc,gov); box(g.Wm-2*T,T,Dc,T,g.alt,-Dc,gov);
+  for(let i=1;i<n;i++) box(T,g.Hi,Dc,T+i*(si+T)-T,yb,-Dc,gov);
+  box(g.Wm-4,g.gH-4,ARKALIK,2,g.alt+2,-g.Dm,[ham,ham,ham,ham,beyazYuz,ham]);
+  if(S.alt==="baza"){ // ön ve iki yan; arka açık
+    box(g.Wm-2*T,g.alt,T,T,0,-T-BAZA_GERI,golge);
+    box(T,g.alt,Dc-BAZA_GERI,0,0,-Dc,golge); box(T,g.alt,Dc-BAZA_GERI,g.Wm-T,0,-Dc,golge); }
+  else { const geo=()=>new THREE.CylinderGeometry(.014,.011,g.alt/1000,16);
+    for(let i=0;i<=n;i++){ const x=i===0?45:i===n?g.Wm-45:T+i*(si+T)-T/2; [-70,-g.Dm+70].forEach(z=>{ const c=new THREE.Mesh(geo(),metal); c.position.set((x+ox)/1000,g.alt/2000,z/1000); R.add(c); }); } }
+  if(g.ust){ const zf=S.door==="kapakli"?0:-T; // ön + iki yan; arka açık. Menteşeli kapakta kapakla aynı hizada, diğerlerinde gövde önüyle
+    box(g.Wm,g.ust,T,0,g.top,zf,S.door==="acik"?gov:kap);
+    box(T,g.ust,g.Dm+zf,0,g.top,-g.Dm,gov); box(T,g.ust,g.Dm+zf,g.Wm-T,g.top,-g.Dm,gov); }
+  // iç
+  const rafD=rafDer(), kumas=["#6B7A8F","#A65E4E","#D8C3A5","#3F4E4F","#8E8D8A","#C9B79C"], rl=rayBoy();
+  for(let i=0;i<n;i++){
+    const x0=T+i*(si+T), d=duzen(S.sections[i],g.Hi);
+    d.raflar.forEach(p=>box(si,T,rafD,x0,yb+p,-Dc,gov));
+    const cp=cekPay(), zf=cekOnZ();
+    if(cp&&d.cek){ const dd=(zf+T)+Dc; [x0,x0+si-cp].forEach(x=>box(cp,d.cek*CEKMECE_H,dd,x,yb,-Dc,gov)); }
+    for(let j=0;j<d.cek;j++){
+      const grp=new THREE.Group(); R.add(grp);
+      box(si-4-2*cp,CEKMECE_H-6,T,x0+2+cp+ox,yb+j*CEKMECE_H+3,zf,S.door==="acik"?kap:gov,grp);
+      // kutu: iki yan + arka (18 mm beyaz) ve 5 mm taban
+      const kx=x0+13+cp+ox, kw=si-26-2*cp, ky=yb+j*CEKMECE_H+25;
+      box(T,150,rl,kx,ky,zf-rl,beyaz,grp); box(T,150,rl,kx+kw-T,ky,zf-rl,beyaz,grp); box(kw-2*T,130,T,kx+T,ky+20,zf-rl,beyaz,grp);
+      box(kw-2*T+16,CEK_TABAN,rl-T+8,kx+T-8,ky+10,zf-rl+T-8,[ham,ham,beyazYuz,ham,ham,ham],grp);
+      box(120,14,14,x0+si/2-60+ox,yb+j*CEKMECE_H+CEKMECE_H/2,zf+T,metal,grp);
+      V3.drawers.push({grp,out:rl*0.4/1000});
+    }
+    d.cubuklar.forEach(p=>{
+      const c=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,(si-30)/1000,16),metal); c.rotation.z=Math.PI/2; c.position.set((x0+si/2+ox)/1000,(yb+p)/1000,-Dc/2000); R.add(c);
+      const alt=Math.max(0,...d.raflar.filter(r=>r<p),d.cek*CEKMECE_H), boy=Math.min(1000,p-alt-60), adet=Math.max(2,Math.floor(si/100)), dz=Math.min(Dc-140-(S.door==="surgu"?SURGU_D:0),480);
+      for(let k=0;k<adet;k++){ const cx=x0+(si/(adet+1))*(k+1), m=basitMat("k"+(k+i)%6,{color:kumas[(k+i)%6],roughness:1});
+        const me=box(28,boy-40,dz,cx-14,yb+p-boy,-Dc/2-dz/2,m); me.rotation.y=(Math.random()-.5)*.12; }
+    });
+    // seçili bölme: bölme ağzını saran yarı saydam sarı vurgu
+    if(S.step===1&&i===S.sel) box(si,g.Hi,2,x0,yb,-2,basitMat("secim",{color:"#F2B705",transparent:true,opacity:.22,depthWrite:false,roughness:1}));
+  }
+  // kapaklar
+  const ks=kapaklar();
+  // sürgü ray profilleri gövde içinde, ön kenardan SURGU_D derinliğe kadar
+  if(S.door==="surgu"){ box(g.Wm-2*T,16,SURGU_D,T,g.top-T-16,-SURGU_D,metal); box(g.Wm-2*T,10,SURGU_D,T,yb,-SURGU_D,metal); }
+  ks.forEach(d=>{
+    if(d.surgu){
+      const grp=new THREE.Group(); R.add(grp); const z=d.front?-T-10:-SURGU_D+12, y=d.y+16, h=d.h-32;
+      box(d.w,h,T,d.x+ox,y,z,fm(kap),grp); box(14,h,T+4,d.x+ox,y,z-2,fm(metal),grp); box(14,h,T+4,d.x+d.w-14+ox,y,z-2,fm(metal),grp);
+      if(d.ayna){ const a=aynaRect(d); box(a.w,h-32,AYNA_KALINLIK,a.x+ox,y+16,z+T,fm(aynaMat(S.ayna.tip)),grp); }
+      if(d.front) V3.slides.push({grp,adim:d.adim/1000});
+      return;
+    }
+    // menteşe ekseni kapağın ön kenarında: komşu kapaklar ve gövde ile çakışmaz
+    const pv0=new THREE.Group(), L=d.hinge==="L", xl=L?0:-d.w; pv0.position.set(((L?d.x:d.x+d.w)+ox)/1000,d.y/1000,T/1000); R.add(pv0);
+    const pv=new THREE.Group(); pv.position.z=-T/1000; pv0.add(pv);
+    box(d.w,d.h,T,xl,0,0,kap,pv);
+    if(d.ayna){ const a=aynaRect(d); box(a.w,a.h,AYNA_KALINLIK,xl+(a.x-d.x),a.y-d.y,T,aynaMat(S.ayna.tip),pv); }
+    const hx=L?d.w-60:-d.w+60, hy=d.h*0.55, km=basitMat("kulp",{color:"#3A3F45",metalness:.5,roughness:.4});
+    if(S.handle==="cubuk") box(16,360,24,hx-8,hy-180,T+(d.ayna?AYNA_KALINLIK:0),km,pv);
+    if(S.handle==="dugme"){ const c=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.024,20),km); c.rotation.x=Math.PI/2; c.position.set(hx/1000,hy/1000,(T+12+(d.ayna?AYNA_KALINLIK:0))/1000); pv.add(c); }
+    V3.doors.push({pv:pv0,s:L?-1:1});
+  });
+  // zemin gölgesi
+  const sh=MC.shadow||(MC.shadow=new THREE.MeshBasicMaterial({transparent:true,depthWrite:false,map:canvasTex(128,128,(x,w,h)=>{const gr=x.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);gr.addColorStop(0,"rgba(0,0,0,.35)");gr.addColorStop(1,"rgba(0,0,0,0)");x.fillStyle=gr;x.fillRect(0,0,w,h);})}));
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry((g.Wm+700)/1000,(g.Dm+700)/1000),sh); pl.rotation.x=-Math.PI/2; pl.position.set(0,.001,-g.Dm/2000); R.add(pl);
+  uygula(); V3.dirty=true;
+}
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+function uygula(){
+  const e=ease(V3.a), e2=ease(Math.min(1,Math.max(0,(V3.a-.45)/.55))), es=ease(Math.min(1,V3.a/.55));
+  // 88°: 90°'yi geçerse komşu kapakların uçları kesişir, çok azalırsa kapak çekmeceye çarpar
+  V3.doors.forEach(d=>d.pv.rotation.y=d.s*e*1.536);
+  // sürgü: önce kayar, sonra iç görünsün diye saydamlaşır
+  V3.slides.forEach(s=>s.grp.position.x=-s.adim*es);
+  const op=1-0.88*e2; V3.fade.forEach(m=>{ m.opacity=op; m.depthWrite=op>0.99; });
+  V3.drawers.forEach(d=>d.grp.position.z=d.out*e2);
+}
+function tick(t){
+  if(S.view!=="3d"){ V3.raf=0; return; }
+  const dt=Math.min(.05,(t-(V3.lt||t))/1000); V3.lt=t;
+  const tgt=S.showDoors?0:1;
+  if(V3.a!==tgt){ V3.a = azHareket ? tgt : (tgt>V3.a ? Math.min(tgt,V3.a+dt/1.2) : Math.max(tgt,V3.a-dt/1.2)); uygula(); V3.dirty=true; }
+  if(V3.dirty){ camPos(); V3.renderer.render(V3.scene,V3.camera); V3.dirty=false; }
+  V3.raf=requestAnimationFrame(tick);
+}
+
+function cizim(){
+  if(S.view==="3d" && !init3D()) S.view="2d";
+  const v3=S.view==="3d";
+  $("#c2").style.display=v3?"none":"flex"; $("#c3").style.display=v3?"block":"none";
+  if(v3){ resize3D(); build3D(); if(!V3.raf){ V3.lt=0; V3.raf=requestAnimationFrame(tick); } } else cizim2B();
+  document.querySelectorAll("[data-view]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.view===S.view));
+  $("#sw").innerHTML=uyarilar().map(x=>`<p><b>Dikkat:</b> ${x}</p>`).join("");
+  $("#dimtxt").textContent=`${S.W}×${S.H}×${S.D} cm`;
+  const tb=$("#doorToggle"); tb.disabled=S.door==="acik"; kapakDugme();
+}
+
+/* ===== Malzeme listesi ===== */
+function liste(){
+  const g=G(), n=S.n, si=g.si;
+  const govde=`18 mm ${GOVDE_MALZ[S.govdeMalz]} ${kaplama(S.color).ad}`, kapakM=`18 mm ${KAPAK_MALZ_UZUN[S.kapakMalz]} ${kaplama(S.kColor).ad}`;
+  const beyaz="18 mm Suntalam Beyaz", ark=`${ARKALIK} mm arkalık (bir yüzü beyaz)`, taban=`${CEK_TABAN} mm çekmece tabanı (bir yüzü beyaz)`, aynaM=`${AYNA_KALINLIK} mm gümüş ayna`;
+  const kapakBant = true;
+  const map=new Map();
+  const add=(grup,ad,adet,a,b,malz,kenar=0)=>{ if(adet<=0) return; const key=[grup,ad,r0(a),r0(b),malz].join("|"); const m=map.get(key)||{grup,ad,adet:0,a:r0(a),b:r0(b),malz,kenar:0}; m.adet+=adet; m.kenar+=kenar*adet; map.set(key,m); };
+  const rl=rayBoy(), rafD=rafDer(), Dc=g.Dc;
+  let raf=0, mentese=0;
+  add("Gövde","Yan dikme",2,g.gH,Dc,govde,g.gH);
+  add("Gövde","Üst tabla",1,g.Wm-2*T,Dc,govde,g.Wm-2*T);
+  add("Gövde","Alt tabla",1,g.Wm-2*T,Dc,govde,g.Wm-2*T);
+  add("Gövde","Ara dikme",n-1,g.Hi,Dc,govde,g.Hi);
+  // Arkalık gövdenin arkasına vidalanır. Levhanın kısa kenarını (PLAKA.h) aşarsa ek yeri bir ara dikmenin ortasına gelecek şekilde bölünür
+  // En az parça sayısıyla, ek yerleri eşit bölmeye en yakın ara dikmelere gelir
+  const ortalar=Array.from({length:n-1},(_,i)=>T+(i+1)*(si+T)-T/2), adet=ortalar.length?Math.min(n,Math.ceil((g.Wm-4)/PLAKA.h)):1;
+  let kesim=[2,...Array.from({length:adet-1},(_,k)=>{ const h=2+(k+1)*(g.Wm-4)/adet; return ortalar.reduce((a,b)=>Math.abs(b-h)<Math.abs(a-h)?b:a,ortalar[0]); }),g.Wm-2];
+  kesim=[...new Set(kesim)];
+  if(kesim.some((x,i)=>i&&x-kesim[i-1]>PLAKA.h)){ // eşit bölme olmazsa: levhaya sığdığı kadar uzun parçalar
+    kesim=[2]; [...ortalar,g.Wm-2].forEach((x,i,a)=>{ if(x-kesim[kesim.length-1]>PLAKA.h && i>0 && a[i-1]>kesim[kesim.length-1]) kesim.push(a[i-1]); }); kesim.push(g.Wm-2);
+  }
+  const parca=kesim.length-1;
+  kesim.slice(1).forEach((x,i)=>add("Gövde",parca>1?"Arkalık (ara dikmede birleşir)":"Arkalık",1,x-kesim[i]-(i?1:0)-(i<parca-1?1:0),g.gH-4,ark));
+  if(S.alt==="baza"){ add("Alt ve üst","Baza önü",1,g.Wm-2*T,BAZA,govde,g.Wm-2*T); add("Alt ve üst","Baza yanı",2,Dc-BAZA_GERI,BAZA,govde,BAZA); add("Hırdavat","Baza ayar ayağı",(n+1)*2,0,0,"Plastik"); add("Hırdavat","Baza klipsi",(n+1),0,0,"Plastik"); }
+  else add("Hırdavat",`Mobilya ayağı ${AYAK/10} cm`,(n+1)*2,0,0,"Metal");
+  if(g.ust){ const m=S.door==="acik"?govde:kapakM; add("Alt ve üst","Üst baza önü (yerinde kesilir)",1,g.Wm,g.ust,m,g.Wm); add("Alt ve üst","Üst baza yanı (yerinde kesilir)",2,S.door==="kapakli"?g.Dm:g.Dm-T,g.ust,govde,0); add("Alt ve üst","Üst baza bağlantı çıtası",2,g.Wm-2*T,40,govde); }
+  S.sections.slice(0,n).forEach(s=>{
+    const d=duzen(s,g.Hi);
+    add("Raf ve askı","Raf",d.raflar.length,si-2,rafD,govde,si-2); raf+=d.raflar.length;
+    add("Raf ve askı","Askı borusu",d.cubuklar.length,si-4,0,"Oval alüminyum");
+    add("Raf ve askı","Askı borusu taşıyıcı",d.cubuklar.length*2,0,0,"Metal");
+    if(d.cek){ const cp=cekPay(), kutu=si-26-2*cp, onM=S.door==="acik"?kapakM:govde, on=si-4-2*cp;
+      if(cp) add("Çekmece","Ray dolgu parçası (kapak açılma payı)",2,d.cek*CEKMECE_H,Dc+cekOnZ()+T,govde,d.cek*CEKMECE_H);
+      add("Çekmece","Çekmece ön",d.cek,on,CEKMECE_H-6,onM,2*(on+CEKMECE_H-6));
+      add("Çekmece","Çekmece yan",d.cek*2,rl,150,beyaz,rl);
+      add("Çekmece","Çekmece arka",d.cek,kutu-2*T,130,beyaz,kutu-2*T);
+      add("Çekmece","Çekmece tabanı (yanlarda kanala girer)",d.cek,kutu-2*T+16,rl-T+8,taban);
+      add("Çekmece","Teleskopik ray (çift)",d.cek,rl,0,"Metal"); }
+  });
+  const ks=kapaklar();
+  ks.forEach(d=>{
+    add("Kapak",d.surgu?"Sürgü kapak":"Kapak",1,d.w,d.surgu?d.h-32:d.h,kapakM,kapakBant?2*(d.w+d.h):0);
+    if(d.ayna){ const a=aynaRect(d); add("Ayna","Ayna, kapak boyu (rodajlı)",1,a.w,d.surgu?a.h-32:a.h,aynaM); }
+    if(!d.surgu) mentese += d.h<=900?2:d.h<=1600?3:d.h<=2000?4:5;
+  });
+  if(ks.some(d=>d.ayna)) add("Ayna","Ayna yapıştırıcısı ve emniyet filmi",1,0,0,"Sarf");
+  if(S.door==="kapakli"){
+    add("Hırdavat","Frenli menteşe",mentese,0,0,"Metal");
+    if(S.handle==="gomme") add("Hırdavat","Bas-aç mekanizması",ks.length,0,0,"Metal"); else add("Hırdavat",KULP_UZUN[S.handle],ks.length,0,0,"Metal");
+  }
+  if(S.door==="surgu") add("Hırdavat","Sürgü ray ve profil seti",1,g.Wm-2*T,0,"Alüminyum");
+  add("Hırdavat","Raf pimi",raf*4,0,0,"Metal");
+  add("Hırdavat","Bağlantı seti (minifix, vida)",1,0,0,"Karışık");
+  const SIRA=["Gövde","Alt ve üst","Raf ve askı","Çekmece","Kapak","Ayna","Hırdavat"];
+  const rows=[...map.values()].sort((x,y)=>SIRA.indexOf(x.grup)-SIRA.indexOf(y.grup)), plM2=PLAKA.w*PLAKA.h/1e6, alanlar={};
+  const kenarlar={}; // kenar bandı, bantlandığı parçanın kaplamasıyla aynı renktedir
+  rows.forEach(r=>{ if(r.b) alanlar[r.malz]=(alanlar[r.malz]||0)+r.adet*r.a*r.b/1e6; if(r.kenar) kenarlar[r.malz]=(kenarlar[r.malz]||0)+r.kenar/1000*1.1; });
+  const levha = Object.keys(alanlar).filter(k=>k!==aynaM).map(k=>({malz:k,m2:alanlar[k],adet:Math.ceil(alanlar[k]*FIRE/plM2)}));
+  const kenar = Object.keys(kenarlar).map(k=>({malz:k.replace(/^18 mm (Suntalam|MDFlam) /,""),m:kenarlar[k]}));
+  return {rows, levha, ayna:alanlar[aynaM]||0, kenar, kapakAdet:ks.length};
+}
+function uyarilar(){
+  const w=[], g=G();
+  if(g.si<300) w.push(`Bölmeler çok dar (${(g.si/10).toFixed(0)} cm). Bölme sayısını azaltın.`);
+  if(g.si>1000) w.push(`Bölmeler ${(g.si/10).toFixed(0)} cm; bu genişlikte raflar zamanla eğilir. Bölme ekleyin.`);
+  if(g.Wm-2*T>PLAKA.w) w.push(`Üst ve alt tabla ${S.W} cm ile tek levhadan çıkmaz; dolap iki gövde olarak üretilir.`);
+  if(S.door==="surgu"){
+    const pw=(g.Wm-2*T)/surguAdet()+SURGU_BINDIRME;
+    if(S.n===1) w.push(`Tek bölmede iki sürgü kapak bölmenin ancak yarısını açar. En az 2 bölme seçin.`);
+    else if(pw>SURGU_MAX_PANEL) w.push(`Sürgü kapaklar ${(pw/10).toFixed(0)} cm genişliğinde; bu boyda kapak ağır olur. Bölme ekleyin.`);
+  }
+  if(g.gH>PLAKA.w) w.push(`Yan dikmeler ${(g.gH/10).toFixed(0)} cm; tek levhadan çıkmaz. Üst baza ile gövdeyi kısaltın.`);
+  if(S.ustOn){ const diag=Math.hypot(g.gH,g.Dm), max=Math.sqrt(Math.pow(g.Hm-10,2)-g.Dm*g.Dm), gerek=Math.ceil((g.Hm-g.alt-max)/10);
+    if(diag>g.Hm-10) w.push(`Gövde kurulumda tavana takılır (yatırma köşegeni ${(diag/10).toFixed(0)} cm). Üst bazayı en az ${gerek} cm yapın.`); }
+  S.sections.slice(0,S.n).forEach((s,i)=>{ if(s.type==="karma"&&g.Hi-420-2*CEKMECE_H<900) w.push(`${i+1}. bölmede askı boyu 90 cm’nin altında; uzun kıyafet sığmaz.`); });
+  if(S.D<55&&S.sections.slice(0,S.n).some(s=>["aski","uzun","karma"].includes(s.type))) w.push(`Askılı bölmeler için ${S.D} cm derinlik az; en az 55 cm önerilir.`);
+  return w;
+}
+
+/* ===== Adımlar ===== */
+function ikon(type){
+  const L='stroke="currentColor" fill="none" stroke-width="2"';
+  const p={aski:`<line x1="4" y1="14" x2="40" y2="14" ${L}/><line x1="8" y1="20" x2="36" y2="20" ${L} stroke-width="3"/>`,
+    uzun:`<line x1="8" y1="8" x2="36" y2="8" ${L} stroke-width="3"/>`,
+    raf:[14,24,34,44].map(y=>`<line x1="4" y1="${y}" x2="40" y2="${y}" ${L}/>`).join(""),
+    cekmece:`<line x1="4" y1="20" x2="40" y2="20" ${L}/><line x1="4" y1="32" x2="40" y2="32" ${L}/>`+[36,44].map(y=>`<rect x="6" y="${y-2}" width="32" height="7" ${L}/>`).join(""),
+    karma:`<line x1="4" y1="12" x2="40" y2="12" ${L}/><line x1="8" y1="18" x2="36" y2="18" ${L} stroke-width="3"/><rect x="6" y="38" width="32" height="7" ${L}/><rect x="6" y="46" width="32" height="7" ${L}/>`};
+  return `<svg viewBox="0 0 44 58"><rect x="2" y="2" width="40" height="54" ${L}/>${p[type]}</svg>`;
+}
+const sayac=(id,v,min,max,suf="")=>`<div class="stepper"><button type="button" data-dec="${id}" ${v<=min?"disabled":""} aria-label="Azalt">−</button><output>${v}${suf}</output><button type="button" data-inc="${id}" ${v>=max?"disabled":""} aria-label="Artır">+</button></div>`;
+const seg=(attr,obj,cur)=>`<div class="seg">${Object.keys(obj).map(k=>`<button type="button" data-${attr}="${k}" aria-pressed="${cur===k}">${obj[k]}</button>`).join("")}</div>`;
+const swatch=(attr,keys,cur,src)=>`<div class="swatches">${keys.map(k=>`<button type="button" class="sw" data-${attr}="${k}" aria-pressed="${cur===k}"><i style="background:${k in AYNALAR&&src===AYNALAR?`linear-gradient(135deg,${mix(AYNALAR[k].hex,"#ffffff",.5)},${AYNALAR[k].hex} 50%,${mix(AYNALAR[k].hex,"#000000",.2)})`:src[k].hex}"></i>${src[k].ad}</button>`).join("")}</div>`;
+const olcuAlan=(k,ad,min,max,ip)=>`<div class="field"><div class="field-top"><label for="n-${k}">${ad}</label><div class="numwrap"><input id="n-${k}" data-k="${k}" type="number" inputmode="numeric" min="${min}" max="${max}" value="${S[k]}"><span class="unit">cm</span></div></div><input type="range" data-k="${k}" min="${min}" max="${max}" value="${S[k]}" aria-label="${ad}"><div class="hint">${ip}</div></div>`;
+const kpAnahtar = a => a==="color" ? "color" : "kColor";
+function kpIzgara(a){
+  const f=KP[a], q=f.ara.trim().toLocaleLowerCase("tr"), cur=S[kpAnahtar(a)];
+  const l=KAPLAMALAR.filter(k=>(f.kat==="Tümü"||k.kat===f.kat)&&(!q||k.ad.toLocaleLowerCase("tr").includes(q)));
+  return l.length ? l.map(k=>`<button type="button" data-${a}="${k.id}" aria-pressed="${k.id===cur}" title="${k.ad}"><img src="${kucukYol(k.id)}" alt="" loading="lazy" width="74" height="74">${k.ad}</button>`).join("") : `<p class="kp-bos">Bu aramaya uygun kaplama yok.</p>`;
+}
+const kpKat = a => KAP_KAT.map(k=>`<button type="button" data-kpkat="${a}|${k}" aria-pressed="${KP[a].kat===k}">${k}</button>`).join("");
+const kpSecili = id => { const k=kaplama(id); return `<img src="${kucukYol(k.id)}" alt=""><div><b>${k.ad}</b><span>${k.kat}</span></div>`; };
+function kaplamaSecici(a,cur){
+  return `<div class="kp" data-kp="${a}"><div class="kp-secili">${kpSecili(cur)}</div>
+    <div class="kp-ara"><input type="search" data-kpara="${a}" placeholder="Kaplama ara (ör. ceviz, mermer)" value="${esc(KP[a].ara)}" aria-label="Kaplama ara"></div>
+    <div class="kp-kat" role="group" aria-label="Kaplama türü">${kpKat(a)}</div>
+    <div class="kp-izgara">${kpIzgara(a)}</div></div>`;
+}
+function kaplamaFiltre(a){ const el=document.querySelector(`[data-kp="${a}"]`); if(!el) return; el.querySelector(".kp-kat").innerHTML=kpKat(a); el.querySelector(".kp-izgara").innerHTML=kpIzgara(a); }
+// Seçimde paneli yeniden çizmez: ızgaranın kaydırma konumu ve arama korunur
+function kaplamaSecildi(a){
+  const el=document.querySelector(`[data-kp="${a}"]`), cur=S[kpAnahtar(a)];
+  if(el){ el.querySelector(".kp-secili").innerHTML=kpSecili(cur); el.querySelectorAll(`[data-${a}]`).forEach(b=>b.setAttribute("aria-pressed",b.dataset[a]===cur)); }
+  save(); cizim();
+}
+// +90 hazır gelir; ülke kodu dahil en az 12 rakam (90 + 10 haneli numara) olmalı
+const telTam = () => (S.musteri.tel||"").replace(/\D/g,"").length >= 12;
+const esc=s=>String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const uyariHTML=()=>uyarilar().map(x=>`<p class="warn">${x}</p>`).join("");
+
+function adimCiz(){
+  const b=$("#stepBody"), g=G();
+  if(S.step===0){
+    b.innerHTML=`<h2>Ölçüler</h2><p class="lead">Dolabın konacağı duvarı ölçün.</p>
+    ${olcuAlan("W","Genişlik",60,400,"Duvardan duvara ölçü")}
+    ${olcuAlan("H",S.ustOn?"Tavan yüksekliği":"Dolap yüksekliği",150,300,S.ustOn?"Yerden tavana ölçün. Gövde bundan kısa üretilir, boşluğu üst baza kapatır.":"Yerden dolabın üstüne kadar")}
+    ${olcuAlan("D","Derinlik",35,70,"Askılı dolaplar için 58–60 cm standarttır")}
+    <div class="field row"><div><div class="label" style="margin:0">Bölme sayısı</div><div class="hint" id="bolmeHint">Her bölme yaklaşık ${(g.si/10).toFixed(0)} cm</div></div>${sayac("n",S.n,1,6)}</div>
+    <h3>Dolabın altı</h3>${seg("alt",{baza:"Kapalı baza",ayak:"Ayaklı"},S.alt)}
+    <h3>Dolabın üstü</h3>${seg("ust",{acik:"Boşluk kalsın",tavan:"Tavana kadar"},S.ustOn?"tavan":"acik")}
+    ${S.ustOn?`<div class="field row"><div><div class="label" style="margin:0">Üst baza yüksekliği</div><div class="hint">Tavanla gövde arasını kapatır; dolabın yatırılıp kaldırılabilmesi için gerekir.</div></div>${sayac("ustH",S.ustH,5,25," cm")}</div>`:""}`;
+  }
+  if(S.step===1){
+    const s=S.sections[S.sel];
+    b.innerHTML=`<h2>İç düzen</h2><p class="lead">Bir bölme seçin, içine ne koyacağınızı belirleyin.</p>
+    <div class="chips">${S.sections.slice(0,S.n).map((x,i)=>`<button type="button" class="chip" data-sel="${i}" aria-pressed="${i===S.sel}">${i+1}. bölme<span>${TIPLER[x.type]}</span></button>`).join("")}</div>
+    <div class="options">${Object.keys(TIPLER).map(k=>`<button type="button" class="opt" data-type="${k}" aria-pressed="${s.type===k}">${ikon(k)}${TIPLER[k]}</button>`).join("")}</div>
+    ${["raf","cekmece"].includes(s.type)?`<div class="field row"><div class="label" style="margin:0">Raf sayısı</div>${sayac("raf",s.raf,1,8)}</div>`:""}
+    ${s.type==="cekmece"?`<div class="field row"><div class="label" style="margin:0">Çekmece sayısı</div>${sayac("cek",s.cek,1,4)}</div>`:""}
+    <button type="button" class="link" id="applyAll">Bu düzeni tüm bölmelere uygula</button>`;
+  }
+  if(S.step===2){
+    b.innerHTML=`<h2>Gövde</h2><p class="lead">Gövde; dikmeler, raflar ve tablalardır. İç yüzler de bu renkte olur.</p>
+    <span class="label">Malzeme</span>${seg("gm",GOVDE_MALZ,S.govdeMalz)}
+    <p class="hint" style="margin:-8px 0 16px">MDFlam vida tutuşu ve neme dayanımı daha iyidir, fiyatı daha yüksektir.</p>
+    <span class="label">Kaplama</span>${kaplamaSecici("color",S.color)}`;
+  }
+  if(S.step===3){
+    const ac=S.door==="acik";
+    b.innerHTML=`<h2>Kapak</h2><p class="lead">Kapak açılacak yer dar ise sürgülü seçin.</p>
+    <span class="label">Kapak tipi</span>${seg("door",KAPAK,S.door)}
+    ${S.door==="surgu"?`<p class="hint" style="margin:-8px 0 16px">Her bölmeye bir sürgü kapak: ${surguAdet()} kapak, her biri yaklaşık ${((S.W*10-2*T)/surguAdet()/10+SURGU_BINDIRME/10).toFixed(0)} cm. Kapak sayısını değiştirmek için bölme sayısını değiştirin.</p>`:""}
+    ${ac?"":`<span class="label">Kapak malzemesi</span>${seg("km",KAPAK_MALZ,S.kapakMalz)}
+    <p class="hint" style="margin:-8px 0 16px">${{suntalam:"En ekonomik seçenek.",mdflam:"Suntalamdan daha sağlam, kenarları daha temiz."}[S.kapakMalz]}</p>
+    <span class="label">Kapak kaplaması</span>${kaplamaSecici("kcolor",S.kColor)}
+    ${S.door==="kapakli"?`<span class="label">Kulp</span>${seg("handle",KULP,S.handle)}`:""}
+    <h3>Ayna</h3>${seg("ak",aynaSecenek(),S.ayna.kapsam)}
+    ${""}`}`;
+  }
+  if(S.step===4){
+    const L=liste(); let grp="";
+    const fmt=r=>r.b?`${r.a} × ${r.b}`:(r.a?`${r.a}`:"–");
+    const satir=L.rows.map(r=>{ let h=""; if(r.grup!==grp){grp=r.grup;h+=`<tr class="grp"><td colspan="4">${grp}</td></tr>`;} return h+`<tr><td>${r.ad}</td><td class="num">${r.adet}</td><td class="num">${fmt(r)}</td><td>${r.malz}</td></tr>`; }).join("");
+    const kart=[...L.levha.map(l=>`<div><b>${l.m2.toFixed(1)} m²</b><span>${l.malz} (≈${l.adet} levha)</span></div>`), ...L.kenar.map(k=>`<div><b>${k.m.toFixed(0)} m</b><span>Kenar bandı, ${k.malz}</span></div>`), L.ayna?`<div><b>${L.ayna.toFixed(2)} m²</b><span>Ayna, ${AYNALAR[S.ayna.tip].ad}</span></div>`:""].join("");
+    const m=S.musteri;
+    const ozet=`<div class="summary"><div><b>${S.W}×${S.H}×${S.D}</b><span>Ölçü (cm)</span></div><div><b>${S.n} bölme</b><span>${KAPAK[S.door]}</span></div>
+      <div><b>${kaplama(S.color).ad}</b><span>Gövde, ${GOVDE_MALZ[S.govdeMalz]}</span></div>${S.door!=="acik"?`<div><b>${kaplama(S.kColor).ad}</b><span>Kapak, ${KAPAK_MALZ[S.kapakMalz]}</span></div>`:""}</div>`;
+    b.innerHTML=(METRAJ_GOSTER?`<h2>Malzeme listesi</h2><p class="lead">Ölçüler milimetredir. Liste ön hesaptır; kesin ölçüyü üretici yerinde ölçüm sonrası verir.</p>
+    <div class="summary">${kart}</div>
+    <div class="tbl-wrap"><table><thead><tr><th>Parça</th><th class="num">Adet</th><th class="num">Ölçü (mm)</th><th>Malzeme</th></tr></thead><tbody>${satir}</tbody></table></div>
+    <h3>Teklif isteyin</h3>`:`<h2>Tasarımınız hazır</h2>${ozet}`)+`<p class="lead">Bilgilerinizi bırakın; tasarımınız ve ölçüleriniz bize ulaşsın, size dönüş yapalım.</p>
+    <div class="form">
+      <input data-m="ad" placeholder="Ad soyad" autocomplete="name" value="${esc(m.ad)}">
+      <input data-m="tel" placeholder="+90 5XX XXX XX XX" type="tel" autocomplete="tel" value="${esc(m.tel||"+90 ")}">
+      <input data-m="mail" placeholder="E-posta (isteğe bağlı)" type="email" autocomplete="email" value="${esc(m.mail)}">
+      <div class="iki"><select disabled aria-label="İl"><option>${IL}</option></select>
+      <select data-m="ilce" aria-label="İlçe"><option value="">İlçe seçin</option>${ILCELER.map(x=>`<option${m.ilce===x?" selected":""}>${x}</option>`).join("")}</select></div>
+      <textarea data-m="not" placeholder="Not (ör. tavan eğimli, priz var)">${esc(m.not)}</textarea>
+    </div>
+    <div class="actions"><button class="btn wa" id="waBtn" type="button">WhatsApp'tan gönder</button><a class="btn primary" id="sendBtn" href="#">E-postayla gönder</a></div>
+    <div class="msg" id="msg"></div>
+    ${METRAJ_GOSTER?`<p class="note">Hesap varsayılan atölye kurallarıyla yapılır (${T} mm levha, ${BAZA} mm baza, ${ARKALIK} mm arkalık). Üretici kendi kurallarına göre düzeltir.</p>`:""}`;
+  }
+  $("#prevBtn").style.visibility=S.step===0?"hidden":"visible";
+  $("#nextBtn").style.visibility=S.step===4?"hidden":"visible";
+  $("#nextBtn").textContent=S.step===3?(METRAJ_GOSTER?"Listeyi gör":"Teklif al"):"İleri";
+  $("#steps").innerHTML=ADIMLAR.map((a,i)=>`<button type="button" data-step="${i}" ${i===S.step?'aria-current="step"':""} class="${i<S.step?"done":""}"><b>${i+1}</b>${a}</button>`).join("");
+}
+
+// listeli=false: WhatsApp için kısa özet (malzeme listesi yalnızca e-postada gider)
+function metin(listeli=true){
+  const L=liste(), m=S.musteri;
+  let t=`DOLAP TEKLİF TALEBİ\n\nMüşteri: ${m.ad}\nTelefon: ${m.tel}\nE-posta: ${m.mail||"-"}\nKonum: ${m.ilce?m.ilce+" / ":""}${IL}\nNot: ${m.not||"-"}\n\n`;
+  t+=`Ölçü: ${S.W} × ${S.H} × ${S.D} cm (G×Y×D)${S.ustOn?`, tavana kadar, üst baza ${S.ustH} cm`:""}\nAlt: ${S.alt==="baza"?"Kapalı baza":"Ayaklı"}\nBölme: ${S.n}\n`;
+  t+=`Gövde: ${GOVDE_MALZ[S.govdeMalz]} ${kaplama(S.color).ad}\nKapak: ${KAPAK[S.door]}${S.door!=="acik"?`, ${KAPAK_MALZ_UZUN[S.kapakMalz]} ${kaplama(S.kColor).ad}`:""}${S.door==="kapakli"?`, ${KULP_UZUN[S.handle]}`:""}\n`;
+  if(S.door!=="acik"&&S.ayna.kapsam!=="yok") t+=`Ayna: ${AYNA_KAPSAM[S.ayna.kapsam]}, gümüş, kapak boyu\n`;
+  S.sections.slice(0,S.n).forEach((s,i)=>{ t+=`  ${i+1}. bölme: ${TIPLER[s.type]}${["raf","cekmece"].includes(s.type)?`, ${s.raf} raf`:""}${s.type==="cekmece"?`, ${s.cek} çekmece`:""}\n`; });
+  if(!listeli) return t;
+  t+=`\nMALZEME LİSTESİ (mm)\n`; let grp="";
+  L.rows.forEach(r=>{ if(r.grup!==grp){grp=r.grup;t+=`\n[${grp}]\n`;} t+=`- ${r.ad}: ${r.adet} adet${r.b?` | ${r.a}×${r.b}`:r.a?` | ${r.a}`:""} | ${r.malz}\n`; });
+  t+=`\n`; L.levha.forEach(l=>t+=`${l.malz}: ${l.m2.toFixed(2)} m² (≈${l.adet} levha)\n`);
+  if(L.ayna) t+=`Ayna: ${L.ayna.toFixed(2)} m²\n`; L.kenar.forEach(k=>t+=`Kenar bandı ${k.malz}: ${k.m.toFixed(0)} m\n`);
+  return t;
+}
+
+/* ===== Olaylar ===== */
+function guncelle(adimDa){ save(); cizim(); if(adimDa) adimCiz(); }
+function canli(){ const h=$("#bolmeHint"); if(h) h.textContent=`Her bölme yaklaşık ${(G().si/10).toFixed(0)} cm`; const w=$("#warns"); if(w) w.innerHTML=uyariHTML(); save(); cizim(); }
+document.addEventListener("input",e=>{
+  const k=e.target.dataset.k;
+  if(k){ const el=e.target, v=+el.value; if(el.type==="range"||(v>=+el.min&&v<=+el.max)){ S[k]=v; document.querySelectorAll(`[data-k="${k}"]`).forEach(x=>{ if(x!==el) x.value=v; }); canli(); } }
+  const mk=e.target.dataset.m; if(mk){ S.musteri[mk]=e.target.value; save(); }
+  const ka=e.target.dataset.kpara; if(ka){ KP[ka].ara=e.target.value; kaplamaFiltre(ka); }
+});
+document.addEventListener("change",e=>{ const k=e.target.dataset.k; if(k&&e.target.type==="number"){ const el=e.target; S[k]=Math.min(+el.max,Math.max(+el.min,+el.value||+el.min)); guncelle(true); } });
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button,a"); if(!t) return; const d=t.dataset;
+  if(d.view){ S.view=d.view; guncelle(false); return; }
+  if(d.step!==undefined){ git(+d.step); return; }
+  if(d.inc||d.dec){
+    const id=d.inc||d.dec, dir=d.inc?1:-1;
+    if(id==="n"){ S.n=Math.min(6,Math.max(1,S.n+dir)); while(S.sections.length<S.n) S.sections.push(sec(["aski","raf","karma"][S.sections.length%3])); if(S.sel>=S.n) S.sel=S.n-1; }
+    else if(id==="ustH") S.ustH=Math.min(25,Math.max(5,S.ustH+dir));
+    else { const s=S.sections[S.sel], lim=id==="raf"?[1,8]:[1,4]; s[id]=Math.min(lim[1],Math.max(lim[0],s[id]+dir)); }
+    guncelle(true); return;
+  }
+  if(d.sel!==undefined){ S.sel=+d.sel; guncelle(true); return; }
+  if(d.type){ const s=S.sections[S.sel]; s.type=d.type; if(d.type==="cekmece"&&s.raf>4) s.raf=2; guncelle(true); return; }
+  if(t.id==="applyAll"){ const s=S.sections[S.sel]; S.sections=S.sections.map(()=>({...s})); guncelle(true); return; }
+  if(d.alt){ S.alt=d.alt; guncelle(true); return; }
+  if(d.ust){ S.ustOn=d.ust==="tavan"; guncelle(true); return; }
+  if(d.gm){ S.govdeMalz=d.gm; guncelle(true); return; }
+  if(d.color){ S.color=d.color; kaplamaSecildi("color"); return; }
+  if(d.kcolor){ S.kColor=d.kcolor; S.showDoors=true; kaplamaSecildi("kcolor"); return; }
+  if(d.door){ S.door=d.door; aynaUyumla(); S.showDoors=true; guncelle(true); return; }
+  if(d.km){ S.kapakMalz=d.km; S.showDoors=true; guncelle(true); return; }
+  if(d.kpkat){ const [a,k]=d.kpkat.split("|"); KP[a].kat=k; kaplamaFiltre(a); return; }
+  if(d.handle){ S.handle=d.handle; S.showDoors=true; guncelle(true); return; }
+  if(d.ak){ S.ayna.kapsam=d.ak; S.showDoors=true; guncelle(true); return; }
+  if(d.at){ S.ayna.tip=d.at; S.showDoors=true; guncelle(true); return; }
+  if(d.as){ S.ayna.sekil=d.as; S.showDoors=true; guncelle(true); return; }
+  if(t.id==="doorToggle"){ S.showDoors=!S.showDoors; save(); if(S.view==="3d") cizimToggleOnly(); else cizim(); return; }
+  if(t.id==="prevBtn"){ git(S.step-1); return; }
+  if(t.id==="nextBtn"){ git(S.step+1); return; }
+  if(t.id==="sendBtn"){
+    const msg=$("#msg");
+    if(!S.musteri.ad.trim()||!telTam()){ e.preventDefault(); msg.className="msg err"; msg.textContent="Ad soyad ve telefon numaranızı eksiksiz girin."; return; }
+    t.href=`mailto:${URETICI_EPOSTA}?subject=${encodeURIComponent("Dolap teklif talebi – "+S.musteri.ad)}&body=${encodeURIComponent(metin())}`; t.target="_blank";
+    msg.className="msg good"; msg.textContent="E-posta uygulamanız açılıyor. Açılmazsa listeyi kopyalayıp gönderin."; return;
+  }
+  if(t.id==="waBtn"){
+    const msg=$("#msg");
+    if(!S.musteri.ad.trim()||!telTam()){ msg.className="msg err"; msg.textContent="Ad soyad ve telefon numaranızı eksiksiz girin."; return; }
+    window.open(FIRMA.waLink("Merhaba, sitenizde dolap tasarladım.\n\n"+metin(false)),"_blank","noopener");
+    msg.className="msg good"; msg.textContent="WhatsApp açılıyor; mesajı göndermeyi unutmayın."; return;
+  }
+});
+function cizimToggleOnly(){ kapakDugme(); }
+function kapakDugme(){
+  const v3=S.view==="3d", acik=!S.showDoors;
+  const ikon = acik
+    ? '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="14" height="16" rx="1"/><line x1="10" y1="2" x2="10" y2="18"/></svg>'
+    : '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="16" rx="1"/><path d="M7 2 L2 5 V19 L7 18"/></svg>';
+  const yazi = v3 ? (acik?"Kapakları kapat":"Kapakları aç") : (acik?"Kapakları göster":"Kapakları gizle");
+  $("#doorToggle").innerHTML = ikon + yazi;
+}
+function git(i){
+  if(i<0||i>4) return; const onceki=S.step; S.step=i;
+  if(i===1) S.showDoors=false; else if(onceki===1||i===3) S.showDoors=true;
+  guncelle(true);
+  if(window.matchMedia("(max-width:899px)").matches) document.querySelector(".panel").scrollIntoView({block:"start"});
+}
+S.ayna.tip="gumus"; S.ayna.sekil="tam"; // tek ayna tipi: gümüş, tam yüzey
+if(!(S.kapakMalz in KAPAK_MALZ)) S.kapakMalz="mdflam";
+if(!RENKLER[S.color]) S.color="beyaz";
+if(!RENKLER[S.kColor]) S.kColor="beyaz";
+aynaUyumla();
+guncelle(true);
+</script>
+</body>
+</html>
