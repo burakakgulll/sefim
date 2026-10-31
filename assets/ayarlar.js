@@ -7,6 +7,7 @@ window.FIRMA = {
   telefonLink: "+905XXXXXXXXX",        // DOLDUR: tel: bağlantısı için, boşluksuz
   whatsapp: "905XXXXXXXXX",            // DOLDUR: başında + olmadan, ülke koduyla
   eposta: "teklif@ornek.com",          // DOLDUR: teklif e-postalarının gideceği adres
+  web3formsKey: "",                    // İSTEĞE BAĞLI: web3forms.com'dan alınan anahtar; yazılırsa teklif müşterinin e-posta uygulaması açılmadan doğrudan gelir
   instagram: "sefiminsaat",
   bolge: "Samsun",
   adres: "",                           // DOLDUR (isteğe bağlı): atölye adresi
